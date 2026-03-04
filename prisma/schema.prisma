@@ -1,0 +1,153 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+model User {
+  id            String         @id @default(cuid())
+  email         String         @unique
+  password      String
+  name          String
+  roleId        String
+  role          Role           @relation(fields: [roleId], references: [id])
+  tenantId      String?
+  tenant        Tenant?        @relation(fields: [tenantId], references: [id])
+  wallet        Wallet?
+  auditLogs     AuditLog[]
+  sessions      Session[]
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+}
+
+model Role {
+  id          String           @id @default(cuid())
+  name        String           @unique
+  permissions RolePermission[]
+  users       User[]
+}
+
+model Permission {
+  id    String           @id @default(cuid())
+  key   String           @unique // e.g., "users:create"
+  roles RolePermission[]
+}
+
+model RolePermission {
+  roleId       String
+  permissionId String
+  role         Role       @relation(fields: [roleId], references: [id])
+  permission   Permission @relation(fields: [permissionId], references: [id])
+
+  @@id([roleId, permissionId])
+}
+
+model Tenant {
+  id           String        @id @default(cuid())
+  name         String
+  plan         String        @default("basic") // basic, pro, enterprise
+  quota        Int           @default(100)
+  users        User[]
+  featureFlags FeatureFlag[]
+  createdAt    DateTime      @default(now())
+}
+
+model FeatureFlag {
+  id        String  @id @default(cuid())
+  key       String
+  enabled   Boolean @default(false)
+  tenantId  String?
+  tenant    Tenant? @relation(fields: [tenantId], references: [id])
+
+  @@unique([key, tenantId])
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  actorId   String
+  actor     User     @relation(fields: [actorId], references: [id])
+  action    String   // CREATE, UPDATE, DELETE, LOGIN
+  resource  String   // User, Trip, etc.
+  details   String?  // JSON string of before/after
+  ip        String?
+  userAgent String?
+  createdAt DateTime @default(now())
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id])
+  refreshToken String   @unique
+  expiresAt    DateTime
+  createdAt    DateTime @default(now())
+}
+
+model Wallet {
+  id        String        @id @default(cuid())
+  userId    String        @unique
+  user      User          @relation(fields: [userId], references: [id])
+  balance   Float         @default(0)
+  entries   LedgerEntry[]
+  createdAt DateTime      @default(now())
+}
+
+model LedgerEntry {
+  id            String   @id @default(cuid())
+  walletId      String
+  wallet        Wallet   @relation(fields: [walletId], references: [id])
+  amount        Float
+  type          String   // CREDIT, DEBIT
+  description   String
+  transactionId String
+  createdAt     DateTime @default(now())
+}
+
+// Uber-specific Modules
+model Driver {
+  id        String   @id @default(cuid())
+  name      String
+  email     String   @unique
+  phone     String
+  status    String   @default("OFFLINE") // ONLINE, OFFLINE, BUSY
+  vehicleId String?  @unique
+  vehicle   Vehicle? @relation(fields: [vehicleId], references: [id])
+  trips     Trip[]
+  createdAt DateTime @default(now())
+}
+
+model Vehicle {
+  id        String  @id @default(cuid())
+  model     String
+  plate     String  @unique
+  type      String  // SEDAN, SUV, LUXURY
+  driver    Driver?
+  createdAt DateTime @default(now())
+}
+
+model Trip {
+  id           String   @id @default(cuid())
+  driverId     String?
+  driver       Driver?  @relation(fields: [driverId], references: [id])
+  passengerId  String
+  status       String   @default("PENDING") // PENDING, ONGOING, COMPLETED, CANCELLED
+  pickupLoc    String
+  dropoffLoc   String
+  fare         Float
+  startTime    DateTime?
+  endTime      DateTime?
+  createdAt    DateTime @default(now())
+}
+
+model Booking {
+  id           String   @id @default(cuid())
+  passengerId  String
+  pickupLoc    String
+  dropoffLoc   String
+  scheduledAt  DateTime
+  status       String   @default("SCHEDULEED")
+  createdAt    DateTime @default(now())
+}

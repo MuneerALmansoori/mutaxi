@@ -1,0 +1,5 @@
+{
+  "name": "UberOps Admin Dashboard",
+  "description": "Professional RTL-first Admin Dashboard for Uber-like operations with RBAC, Audit Logs, and Finance modules.",
+  "requestFramePermissions": []
+}
